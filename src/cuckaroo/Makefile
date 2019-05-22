@@ -14,10 +14,6 @@ GCC ?= gcc $(GCC_ARCH_FLAGS) -std=gnu11 $(CFLAGS)
 BLAKE_2B_SRC ?= ../crypto/blake2b-ref.c
 NVCC ?= nvcc -std=c++11 
 
-all : simpletest
-
-simpletest:     simple19
-	./simple19 -n 71
 
 simple19:	../crypto/siphash.h cuckaroo.hpp  bitmap.hpp graph.hpp simple.cpp Makefile
 	$(GPP) -o $@ -DPROOFSIZE=42 -DEDGEBITS=19 simple.cpp $(BLAKE_2B_SRC)
@@ -52,5 +48,12 @@ cuda19:		../crypto/siphash.cuh compress.hpp graph.hpp mean.cu Makefile
 cuda29:		../crypto/siphash.cuh compress.hpp graph.hpp mean.cu Makefile
 	$(NVCC) -o $@ -DEDGEBITS=29 -arch sm_35 mean.cu $(BLAKE_2B_SRC)
 
-cuda30:		../crypto/siphash.cuh compress.hpp graph.hpp mean30.cu Makefile
+cuda30:		../crypto/siphash.cuh compress.hpp graph.hpp mean.cu Makefile
+	$(NVCC) -o $@ -DEDGEBITS=30 -DXBITS=7 -arch sm_35 mean.cu $(BLAKE_2B_SRC)
+
+cuda30_2080ti:		../crypto/siphash.cuh compress.hpp graph.hpp mean30.cu Makefile
 	$(NVCC) -o $@ -DEDGEBITS=30 -DXBITS=7 -DNEPS_A=128 -DNEPS_B=80 -arch sm_35 mean30.cu $(BLAKE_2B_SRC)
+
+cuda30_1080ti:		../crypto/siphash.cuh compress.hpp graph.hpp mean30.cu Makefile
+	$(NVCC) -o $@ -DEDGEBITS=30 -DXBITS=7 -DNEPS_A=130 -DNEPS_B=83 -arch sm_35 mean30.cu $(BLAKE_2B_SRC)
+
