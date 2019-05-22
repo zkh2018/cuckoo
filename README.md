@@ -2,6 +2,7 @@ Cuck(at)oo Cycle
 ================
 
 My [Grincon0](https://grincon.org/) talk on [Cuckoo Cycle](https://www.youtube.com/watch?list=PLvgCPbagiHgqYdVUj-ylqhsXOifWrExiq&v=CLiKX0nOsHE)
+My [GrinconUS](https://grincon.us/) talk on [Cuckoo Cycle](https://www.youtube.com/watch?v=OsBsz8bKeN4)
 
 [Blog article explaining Cuckoo Cycle](http://cryptorials.io/beyond-hashcash-proof-work-theres-mining-hashing)
 
@@ -111,7 +112,9 @@ In support of these claims, I offer the following bounties:
 CPU Speedup Bounties
 --------------------
 $10000 for an open source implementation that finds 42-cycles twice as fast
-as lean_miner, using no more than 1 byte per edge.
+as cuckoo/slean_miner, using no more than 1 byte per edge.
+
+Wilke Trei has submitted a successful (1-1/e)-bounty claim with his slean miner at https://github.com/Lolliedieb/cuckoo
 
 $10000 for an open source implementation that finds 42-cycles twice as fast
 as mean_miner, regardless of memory use.
@@ -127,9 +130,14 @@ recent gcc compiler with regular flags as in my Makefile.
 GPU Speedup Bounty
 ------------------
 $5000 for an open source implementation for a consumer GPU
-that finds 42-cycles twice as fast as mean_miner.cu on 2^29 edge graphs on comparable hardware.
+that finds 42-cycles twice as fast as cuckoo/lean_miner.cu on 2^29 edge graphs on comparable hardware, using no more than a nibble per edge.
+
+$5000 for an open source implementation for a consumer GPU
+that finds 42-cycles twice as fast as cuckoo/mean_miner.cu on 2^29 edge graphs on comparable hardware.
 
 The Makefile defines corresponding targets leancpubounty, meancpubounty, tmtobounty, and gpubounty.
+
+User Photon has submitted a successful half bounty claim, which I'm in the (slow) process of integrating.
 
 Double and fractional bounties
 ------------------------------
@@ -162,7 +170,6 @@ How to build
 --------------
 <pre>
 cd src
-export LD_LIBRARY_PATH="$PWD/crypto:$LD_LIBRARY_PATH"
 make
 </pre>
 
@@ -179,11 +186,16 @@ Projects using Cuckoo Cycle
 --------------
 * [Grin](https://hq.grin.ninja/)
 * [æternity - the oracle machine](http://www.aeternity.com/)
+* [BitGrin // MimbleWimble with bitcoin economics](https://bitgrin.io/)
 * [CodeChain](https://codechain.io/)
 * [BitCash](https://www.choosebitcash.com/)
 * [Veres One](https://veres.one)
 * [BIP 154: Rate Limiting via peer specified challenges; Bitcoin Peer Services](https://github.com/bitcoin/bips/blob/master/bip-0154.mediawiki)
 * [Raddi // radically decentralized discussion](http://www.raddi.net/)
 * [Cortex // AI on Blockchain](https://www.cortexlabs.ai/)
+
+Projects reconsidering Cuckoo Cycle
+--------------
+* [Handshake](https://handshake.org) found [unreconcilable issues](https://handshake.org/files/handshake.txt)
 
 ![](img/logo.png?raw=true)

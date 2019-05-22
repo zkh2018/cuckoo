@@ -27,7 +27,7 @@
 // Here we have the default XBITS=YBITS=7, ZBITS=15 summing to EDGEBITS=29
 // nodebits   XXXXXXX YYYYYYY ZZZZZZZZZZZZZZZ
 // bit%10     8765432 1098765 432109876543210
-// bit/10     2222222 2111111 111110000000000
+// bit/10     2222222 2211111 111110000000000
 
 // The matrix solver stores all edges in a matrix of NX * NX buckets,
 // where NX = 2^XBITS is the number of possible values of the 'X' bits.
@@ -141,6 +141,7 @@ const u32 NNONYZ        = 1 << NONYZBITS;
 
 // 1/32 reduces odds of overflowing z bucket on 2^30 nodes to 2^14*e^-32
 // (less than 1 in a billion) in theory. not so in practice (fails first at mean30 -n 1549)
+// 3/64 works well for 29, would need to be enlarged to 1/16 for EDGEBITS=27
 #ifndef BIGEPS
 #define BIGEPS 3/64
 #endif
@@ -1122,6 +1123,7 @@ public:
         int err = pthread_join(threads[t].thread, NULL);
         assert(err == 0);
       }
+      delete[] threads;
 #endif
       qsort(&sols[sols.size()-PROOFSIZE], PROOFSIZE, sizeof(u32), nonce_cmp);
     }
