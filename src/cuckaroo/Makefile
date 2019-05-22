@@ -51,3 +51,6 @@ cuda19:		../crypto/siphash.cuh compress.hpp graph.hpp mean.cu Makefile
 
 cuda29:		../crypto/siphash.cuh compress.hpp graph.hpp mean.cu Makefile
 	$(NVCC) -o $@ -DEDGEBITS=29 -arch sm_35 mean.cu $(BLAKE_2B_SRC)
+
+cuda30:		../crypto/siphash.cuh compress.hpp graph.hpp mean30.cu Makefile
+	$(NVCC) -o $@ -DEDGEBITS=30 -DXBITS=7 -DNEPS_A=128 -DNEPS_B=80 -arch sm_35 mean30.cu $(BLAKE_2B_SRC)
