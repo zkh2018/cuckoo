@@ -89,7 +89,7 @@ __device__ u32 endpoint(uint2 nodes, int uorv) {
 }
 
 #ifndef FLUSHA // should perhaps be in trimparams and passed as template parameter
-#define FLUSHA 16
+#define FLUSHA 8
 #endif
 
 #define HALF_EDGES (NEDGES >> 1)
@@ -118,15 +118,30 @@ __global__ void SeedA(const int round, const int seg, const siphash_keys &sipkey
     u32 nonce0 = gid * loops + blk + seg * HALF_EDGES;
     u64 bit_v = one_bit_set[nonce0 >> 6];
     if(bit_v == 0) continue;
-    const u64 last = dipblock(sipkeys, nonce0, buf);
-    for (u32 e = 0; e < EDGE_BLOCK_SIZE; e++) {
+    //const u64 last = dipblock(sipkeys, nonce0, buf);
+    diphash_state shs(sipkeys);
+    u32 edge0 = nonce0 & ~EDGE_BLOCK_MASK;
+    u32 i;
+    for(i = 0; i < EDGE_BLOCK_SIZE; i++){
+        shs.hash24(edge0 + i);
+    }
+    const u64 last = shs.xor_lanes();
+    shs.set(sipkeys);
+    u32 e;
+    for (e = 0; e < EDGE_BLOCK_SIZE; e++) {
       u32 nonce = nonce0 + e;
       int bit_set_index1 = nonce >> 6;
       int bit_set_index2 = nonce & 63;
       int bit_set_v = bit_v & (1 << bit_set_index2);
       if(bit_set_v == 0) continue;
       
-      u64 edge = buf[e] ^ last;
+      u64 edge;
+      if(e == EDGE_BLOCK_MASK) edge = last;
+      else {
+          shs.hash24(edge0 + e);
+          edge = shs.xor_lanes() ^ last;
+      }
+      //u64 edge = buf[e] ^ last;
       u32 node0 = (edge >> (32 & (round & 0x1))) & EDGEMASK;
       //u32 node1 = (edge >> 32) & EDGEMASK;
       int row = node0 >> YZBITS;
@@ -498,7 +513,7 @@ struct edgetrimmer {
         Round<EDGES_A><<<tp.trim.blocks, tp.trim.tpb>>>(round, (uint2*)bufferA, indexesE[0], two_bit_set, one_bit_set);
         checkCudaErrors(cudaDeviceSynchronize()); 
 
-        for(int i = 0; i < SEG; i++){
+        for(int i = 0; i < SEG-1; i++){
             cudaMemset(indexesE[1], 0, indexesSize);
             SeedA<EDGES_A><<<tp.genA.blocks, tp.genA.tpb>>>(round, i, *dipkeys, (ulonglong4*)bufferAB, indexesE[1], one_bit_set);
             checkCudaErrors(cudaDeviceSynchronize()); 
