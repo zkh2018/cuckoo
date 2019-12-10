@@ -1,5 +1,5 @@
-// Cuck(at)oo Cycle, a memory-hard proof-of-work
-// Copyright (c) 2013-2019 John Tromp
+// Cuckaroom Cycle, a memory-hard proof-of-work
+// Copyright (c) 2013-2020 John Tromp
 
 #include <stdint.h> // for types uint32_t,uint64_t
 #include <string.h> // for functions strlen, memset
@@ -18,11 +18,17 @@ typedef uint64_t u64;
 #define MAX_SOLS 4
 #endif
 
+#ifndef EDGE_BLOCK_BITS
+#define EDGE_BLOCK_BITS 6
+#endif
+#define EDGE_BLOCK_SIZE (1 << EDGE_BLOCK_BITS)
+#define EDGE_BLOCK_MASK (EDGE_BLOCK_SIZE - 1)
+
 // proof-of-work parameters
 #ifndef EDGEBITS
 // the main parameter is the number of bits in an edge index,
 // i.e. the 2-log of the number of edges
-#define EDGEBITS 31
+#define EDGEBITS 29
 #endif
 #ifndef PROOFSIZE
 // the next most important parameter is the (even) length
@@ -30,22 +36,20 @@ typedef uint64_t u64;
 #define PROOFSIZE 42
 #endif
 
-#if EDGEBITS > 32
+#if EDGEBITS > 30
 typedef uint64_t word_t;
-#elif EDGEBITS > 16
+#elif EDGEBITS > 14
 typedef u32 word_t;
-#else // if EDGEBITS <= 16
+#else // if EDGEBITS <= 14
 typedef uint16_t word_t;
 #endif
 
-// number of nodes in one partition
-#define NNODES1 (1ULL << EDGEBITS)
-// used to mask siphash output
-#define NODEMASK ((word_t)NNODES1 - 1)
-#define NODE1MASK NODEMASK
-#define EDGEMASK NODEMASK
 // number of edges
-#define NEDGES NNODES1
+#define NEDGES ((word_t)1 << EDGEBITS)
+#define EDGEMASK ((word_t)NEDGES - 1)
+#define NNODES NEDGES
+// used to mask siphash output
+#define NODEMASK ((word_t)NNODES - 1)
 
 // Common Solver parameters, to return to caller
 struct SolverParams {
@@ -109,41 +113,51 @@ struct SolverStats {
 	u64 last_solution_time = 0;
 };
 
-// generate edge endpoint in cuck(at)oo graph without partition bit
-word_t sipnode(siphash_keys *keys, word_t edge, u32 uorv) {
-  return keys->siphash24(2*(u64)edge + uorv) & NODEMASK;
+enum verify_code { POW_OK, POW_HEADER_LENGTH, POW_TOO_BIG, POW_TOO_SMALL, POW_NON_MATCHING, POW_BRANCH, POW_DEAD_END, POW_SHORT_CYCLE, POW_UNBALANCED};
+const char *errstr[] = { "OK", "wrong header length", "edge too big", "edges not ascending", "endpoints don't match up", "branch in cycle", "cycle dead ends", "cycle too short", "edges not balanced"};
+
+// fills buffer with EDGE_BLOCK_SIZE siphash outputs for block containing edge in cuckaroo graph
+// return siphash output for given edge
+u64 sipblock(siphash_keys &keys, const word_t edge, u64 *buf) {
+  siphash_state<> shs(keys);
+  word_t edge0 = edge & ~EDGE_BLOCK_MASK;
+  for (u32 i=0; i < EDGE_BLOCK_SIZE; i++) {
+    shs.hash24(edge0 + i);
+    buf[i] = shs.xor_lanes();
+  }
+  for (u32 i=EDGE_BLOCK_MASK; i; i--)
+    buf[i-1] ^= buf[i];
+  return buf[edge & EDGE_BLOCK_MASK];
 }
 
-enum verify_code { POW_OK, POW_HEADER_LENGTH, POW_TOO_BIG, POW_TOO_SMALL, POW_NON_MATCHING, POW_BRANCH, POW_DEAD_END, POW_SHORT_CYCLE};
-const char *errstr[] = { "OK", "wrong header length", "edge too big", "edges not ascending", "endpoints don't match up", "branch in cycle", "cycle dead ends", "cycle too short"};
-
 // verify that edges are ascending and form a cycle in header-generated graph
-int verify(word_t edges[PROOFSIZE], siphash_keys *keys) {
-  word_t uvs[2*PROOFSIZE], xor0, xor1;
-  xor0 = xor1 = (PROOFSIZE/2) & 1;
+int verify(word_t edges[PROOFSIZE], siphash_keys &keys) {
+  word_t xorfrom = 0, xorto = 0;
+  u64 sips[EDGE_BLOCK_SIZE];
+  word_t from[PROOFSIZE], to[PROOFSIZE],visited[PROOFSIZE];
 
   for (u32 n = 0; n < PROOFSIZE; n++) {
-    if (edges[n] > NODEMASK)
+    if (edges[n] > EDGEMASK)
       return POW_TOO_BIG;
     if (n && edges[n] <= edges[n-1])
       return POW_TOO_SMALL;
-    xor0 ^= uvs[2*n  ] = sipnode(keys, edges[n], 0);
-    xor1 ^= uvs[2*n+1] = sipnode(keys, edges[n], 1);
+    u64 edge = sipblock(keys, edges[n], sips);
+    xorfrom ^= from[n] =  edge        & EDGEMASK;
+    xorto   ^= to  [n] = (edge >> 32) & EDGEMASK;
+    visited[n] = false;
   }
-  if (xor0|xor1)              // optional check for obviously bad proofs
+  if (xorfrom != xorto)              // optional check for obviously bad proofs
     return POW_NON_MATCHING;
-  u32 n = 0, i = 0, j;
+  u32 n = 0, i = 0;
   do {                        // follow cycle
-    for (u32 k = j = i; (k = (k+2) % (2*PROOFSIZE)) != i; ) {
-      if (uvs[k]>>1 == uvs[i]>>1) { // find other edge endpoint matching one at i
-        if (j != i)           // already found one before
-          return POW_BRANCH;
-        j = k;
-      }
-    }
-    if (j == i || uvs[j] == uvs[i])
-      return POW_DEAD_END;  // no matching endpoint
-    i = j^1;
+    if (visited[i])
+      return POW_BRANCH;
+    visited[i] = true;
+    u32 nexti;
+    for (nexti = 0; from[nexti] != to[i]; ) // find outgoing edge meeting incoming edge i
+      if (++nexti == PROOFSIZE)
+        return POW_DEAD_END;
+    i = nexti;
     n++;
   } while (i != 0);           // must cycle back to start or we would have found branch
   return n == PROOFSIZE ? POW_OK : POW_SHORT_CYCLE;
@@ -194,4 +208,3 @@ void print_log(const char *fmt, ...) {
 //////////////////////////////////////////////////////////////////
 // END caller QOL
 //////////////////////////////////////////////////////////////////
-

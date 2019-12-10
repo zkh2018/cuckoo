@@ -33,7 +33,7 @@ public:
     cb.freemem();
   }
 
-  word_t bytes() {
+  u64 bytes() {
     return (word_t)(1+NNODES) * sizeof(word_t);
   }
 
@@ -55,6 +55,15 @@ public:
   #endif
       cb.addedge(u, v);
     }
+#ifdef CCSIZE1000
+    u32 nlarge = 0;
+    for (u32 i=0; i<NNODES; i++) {
+      int size = -cb.cuckoo[i];
+      if (size >= 1000)
+        nlarge += size;
+    }
+    printf("%u nodes in ccsize >= 1000\n", nlarge);
+#endif
   }
 };
 
@@ -93,17 +102,16 @@ int main(int argc, char **argv) {
   printf(") with %d%% edges, ", easipct);
   word_t easiness = easipct * (word_t)NNODES / 100;
   cuckoo_ctx ctx(header, sizeof(header), nonce, easiness);
-  word_t bytes = ctx.bytes();
+  u64 bytes = ctx.bytes();
   int unit;
   for (unit=0; bytes >= 10240; bytes>>=10,unit++) ;
-  printf("using %d%cB memory at %llx.\n", bytes, " KMGT"[unit], (uint64_t)ctx.cb.cuckoo);
+  printf("using %d%cB memory at %llx.\n", (u32)bytes, " KMGT"[unit], (uint64_t)ctx.cb.cuckoo);
 
   for (u32 r = 0; r < range; r++) {
     time0 = timestamp();
     ctx.setheadernonce(header, sizeof(header), nonce + r);
     printf("nonce %d k0 k1 k2 k3 %llx %llx %llx %llx\n", nonce+r, ctx.sip_keys.k0, ctx.sip_keys.k1, ctx.sip_keys.k2, ctx.sip_keys.k3);
     ctx.cycle_base();
-    ctx.cb.cycles();
     time1 = timestamp(); timems = (time1 - time0) / 1000000;
     printf("Time: %d ms\n", timems);
   }

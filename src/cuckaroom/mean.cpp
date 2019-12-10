@@ -1,5 +1,5 @@
-// Cuckaroo Cycle, a memory-hard proof-of-work
-// Copyright (c) 2013-2019 John Tromp
+// Cuckaroom Cycle, a memory-hard proof-of-work
+// Copyright (c) 2013-2020 John Tromp
 
 #include "mean.hpp"
 #include <unistd.h>
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
 
   SolverCtx* ctx = create_solver_ctx(&params);
 
-  print_log("Looking for %d-cycle on cuckaroo%d(\"%s\",%d", PROOFSIZE, EDGEBITS, header, nonce);
+  print_log("Looking for %d-cycle on cuckaroom%d(\"%s\",%d", PROOFSIZE, EDGEBITS, header, nonce);
   if (range > 1)
     print_log("-%d", nonce+range-1);
   print_log(") with 50%% edges\n");

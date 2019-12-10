@@ -32,8 +32,6 @@ const u32 MAXEDGES = NEDGES >> IDXSHIFT;
 #define XBITS 6
 #endif
 
-#define NODEBITS (EDGEBITS + 1)
-
 const u32 NX        = 1 << XBITS;
 const u32 NX2       = NX * NX;
 const u32 XMASK     = NX - 1;
@@ -71,7 +69,7 @@ __constant__ uint2 recoveredges[PROOFSIZE];
 __constant__ uint2 e0 = {0,0};
 
 __device__ u64 dipblock(const siphash_keys &keys, const word_t edge, u64 *buf) {
-  diphash_state shs(keys);
+  diphash_state<> shs(keys);
   word_t edge0 = edge & ~EDGE_BLOCK_MASK;
   u32 i;
   for (i=0; i < EDGE_BLOCK_MASK; i++) {
@@ -314,7 +312,7 @@ __global__ void Tail(const uint2 *source, uint2 *destination, const u32 *srcIdx,
     destIdx = atomicAdd(dstIdx, myEdges);
   __syncthreads();
   for (int i = lid; i < myEdges; i += dim)
-    destination[destIdx + lid] = source[group * maxIn + lid];
+    destination[destIdx + i] = source[group * maxIn + i];
 }
 
 #define checkCudaErrors_V(ans) ({if (gpuAssert((ans), __FILE__, __LINE__) != cudaSuccess) return;})
@@ -748,8 +746,8 @@ int main(int argc, char **argv) {
   while ((c = getopt(argc, argv, "scb:d:h:k:m:n:r:U:u:v:w:y:Z:z:")) != -1) {
     switch (c) {
       case 's':
-        print_log("SYNOPSIS\n  cuda%d [-s] [-c] [-d device] [-h hexheader] [-m trims] [-n nonce] [-r range] [-U seedAblocks] [-u seedAthreads] [-v seedBthreads] [-w Trimthreads] [-y Tailthreads] [-Z recoverblocks] [-z recoverthreads]\n", NODEBITS);
-        print_log("DEFAULTS\n  cuda%d -d %d -h \"\" -m %d -n %d -r %d -U %d -u %d -v %d -w %d -y %d -Z %d -z %d\n", NODEBITS, device, tp.ntrims, nonce, range, tp.genA.blocks, tp.genA.tpb, tp.genB.tpb, tp.trim.tpb, tp.tail.tpb, tp.recover.blocks, tp.recover.tpb);
+        print_log("SYNOPSIS\n  cuda%d [-s] [-c] [-d device] [-h hexheader] [-m trims] [-n nonce] [-r range] [-U seedAblocks] [-u seedAthreads] [-v seedBthreads] [-w Trimthreads] [-y Tailthreads] [-Z recoverblocks] [-z recoverthreads]\n", EDGEBITS);
+        print_log("DEFAULTS\n  cuda%d -d %d -h \"\" -m %d -n %d -r %d -U %d -u %d -v %d -w %d -y %d -Z %d -z %d\n", EDGEBITS, device, tp.ntrims, nonce, range, tp.genA.blocks, tp.genA.tpb, tp.genB.tpb, tp.trim.tpb, tp.tail.tpb, tp.recover.blocks, tp.recover.tpb);
         exit(0);
       case 'c':
         params.cpuload = false;
